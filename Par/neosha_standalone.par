@@ -1,0 +1,95 @@
+% Authors: Neosha Narayanan, Aleah Sommers
+
+% Get glacier and bed geometry    
+load('../Data/hasanabad1_thickness.mat')
+md.geometry.thickness=InterpFromGrid(x,y,t,md.mesh.x,md.mesh.y);
+load('../Data/hasanabadi_dem.mat')
+md.geometry.surface=InterpFromGrid(x,y,s,md.mesh.x,md.mesh.y);
+md.geometry.surface = averaging(md, md.geometry.surface, 5); % SMOOTHING
+md.geometry.base=md.geometry.surface-md.geometry.thickness;
+md.geometry.bed=md.geometry.base; %base is an issm attribute
+md.geometry.thickness=md.geometry.surface - md.geometry.base;
+
+% Define ice sliding velocity (m/yr) % so far no velocities read in yet; assumes that surface vel = sliding vel (more true during surge/plugflow)
+
+static = true;
+
+if(static ==false)
+	load /jumbo/ice/ISSM/issmaleah/trunk-jpl/neosha/Data/inversion-velocities/beaud_vx-jan-7-2017.mat
+	md.initialization.vx =  InterpFromGrid(x,y,vx',md.mesh.x,md.mesh.y);
+	md.initialization.vx(isnan(md.initialization.vx)) = 0;
+
+	md.initialization.vx=averaging(md,md.initialization.vx,5); %way to smooth velocities if you have rough data (moving average smoothing scheme)
+	
+	load /jumbo/ice/ISSM/issmaleah/trunk-jpl/neosha/Data/inversion-velocities/beaud_vy-jan-7-2017.mat
+	md.initialization.vy = InterpFromGrid(x, y, vy', md.mesh.x, md.mesh.y);
+	md.initialization.vy(isnan(md.initialization.vy)) = 0;
+	md.initialization.vy = averaging(md, md.initialization.vy, 5);
+
+	md.initialization.vel = sqrt(md.initialization.vx.^2 + md.initialization.vy.^2);
+
+	%md.initialization.vel = 50/(3600*24*365)*ones(md.mesh.numberofvertices,1); % meters per second(50m/yr)
+
+elseif(static==true)
+	% Set the glacier velocity to 0
+	md.initialization.vx=zeros(md.mesh.numberofvertices,1);
+	md.initialization.vy=zeros(md.mesh.numberofvertices,1); % velocities currently both set to 0
+	md.initialization.vel =sqrt(md.initialization.vx.^2 + md.initialization.vy.^2);
+end
+
+%md.initialization.pressure=zeros(md.mesh.numberofvertices,1); %not used in Shakti - more for ice dynamics
+
+
+
+% Materials
+% Ice flow law parameter (note that the standard parameter A=B^(-3))
+md.materials.rheology_B= cuffey(273.15-5)*ones(md.mesh.numberofvertices,1); %flow law parameter for temperate ice (ie, water+ice at bed)
+%md.materials.rheology_B= (2.5e-25)^(-1/3)*ones(md.mesh.numberofvertices,1); %alternative for line above: colder ice
+md.initialization.temperature=(273)*ones(md.mesh.numberofvertices,1); % shakti doesn't use this (for thermo-mechanical sims; thermo part not coupled to shakti)
+md.materials.rheology_n=3.*ones(md.mesh.numberofelements,1); % sets n as 3
+
+% Calving
+md.calving.calvingrate=zeros(md.mesh.numberofvertices,1);
+%md.calving.spclevelset=NaN(md.mesh.numberofvertices,1);
+
+
+% Set Budd sliding - note that for uncoupled hydrology simulations, there is no sliding
+% These are just to satisfy ISSM
+md.friction=friction(); % basal stress = friction coefficient**2 * eff_press * sliding velocity
+md.friction.coefficient=100.*ones(md.mesh.numberofvertices,1); % constant value right now
+md.friction.q = ones(md.mesh.numberofelements, 1);
+md.friction.p = ones(md.mesh.numberofelements, 1);
+
+
+% Numerical parameters
+%md.stressbalance.viscosity_overshoot=0.0;
+md.masstransport.stabilization=1.;
+md.thermal.stabilization=1.;
+md.verbose=verbose(0);
+md.settings.waitonlock=30;
+md.stressbalance.restol=0.05;
+md.steadystate.reltol=0.05;
+md.stressbalance.reltol=0.05;
+md.stressbalance.abstol=NaN;
+md.timestepping.time_step=1.;
+md.timestepping.final_time=3.;
+
+% GIA: 
+%md.gia.lithosphere_thickness=100.*ones(md.mesh.numberofvertices,1); % in km
+%md.gia.mantle_viscosity=1.0*10^21*ones(md.mesh.numberofvertices,1); % in Pa.s
+%md.materials.lithosphere_shear_modulus=6.7*10^10;                   % in Pa
+%md.materials.lithosphere_density=3.32;                              % in g/cm^-3
+%md.materials.mantle_shear_modulus=1.45*10^11;                       % in Pa
+%md.materials.mantle_density=3.34;                                   % in g/cm^-3
+
+%Boundary conditions:
+md=SetIceSheetBC(md); % bcs are set in runme script
+
+%Change name so that no test have the same name
+A=dbstack;
+if (length(A)>2), md.miscellaneous.name=A(3).file(1:end-2); end
+
+
+
+
+
