@@ -7,7 +7,8 @@
 #
 # Downscaling climate data (T, P, snow cover) from ERA5-Land based on HydroBasins.
 # Downscaling using the KrigR package
-# Requires ECMWF API Key and Username
+# Requires ECMWF API Key and Username (Line 53)
+# Add root directory (Line 41) and directory for shp files (Line 38)
 #
 # Input:
 # 1) HydroBasins (https://www.hydrosheds.org/products/hydrobasins) for domain
@@ -16,7 +17,7 @@
 # Created:          2023/02/12
 # Latest Revision:  2023/02/21
 #
-# Jakob F Steiner | jakob@x-hydrolab.org | x-hydrolab.org 
+# Jakob F Steiner | jakob.steiner@uni-graz.at | x-hydrolab.org 
 ################################################################################
 # clear entire workspace (excl. packages)
 rm(list = ls())
@@ -34,10 +35,10 @@ library(devtools)
 library(KrigR)
 
 # load basin shp file
-path_outlines <- 'C:\\Work\\GeospatialData\\HydroSheds\\hybas_as_lev01-12_v1c'
+path_outlines <- '' # add directory for shape files here
 fnUIBOutline <- 'hybas_as_lev08_v1c'
 
-RootDir <- 'C:\\Work\\Research\\Collaborations\\HMA\\NeoshaMIT\\'
+RootDir <- '' # add root directory here
   
 path_output <- paste(RootDir&'Output')
 path_rawdata <- paste(RootDir&'BaseData\\ERA5Land')
@@ -50,7 +51,7 @@ UIB_pEXT<-SpatialPolygons(UIB_pEXT@polygons,proj4string=UIB_pEXT@proj4string)
 #projection(UIB_pEXT)<-CRS("+init=epsg:4326")
 
 # Read ECMWF API KEY DATA
-ECMWF_API <- read.csv('C:\\Work\\Code\\ecmwf_API.csv')
+ECMWF_API <- read.csv('') # add path for ECMWF API key here
 
 # Load Temperature data
 UIB_RAW_T <- download_ERA(
